@@ -95,7 +95,7 @@ jobs:
           port: ${{ vars.SERVER_PORT || 22 }}
           script: |
             set -e
-            cd ~/tinder-habr
+            cd ~/HabrSwipe
             git fetch origin main
             git reset --hard origin/main
             mkdir -p frontend/dist

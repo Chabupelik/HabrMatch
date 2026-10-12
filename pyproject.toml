@@ -1,0 +1,28 @@
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "backend/alembic",
+    "frontend",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+
+ignore = [
+    "E501",    
+    "E741",    
+    "B008",    
+    "LOG015",  
+    "UP046",   
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "bot"]
+
+[[tool.mypy.overrides]]
+module = ["bot.*", "alembic.*"]
+ignore_errors = true

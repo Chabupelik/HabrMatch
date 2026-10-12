@@ -108,7 +108,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ vars.SERVER_PORT || 22 }}
           source: "frontend-dist/*"
-          target: "~/tinder-habr/frontend/dist"
+          target: "~/HabrSwipe/frontend/dist"
           strip_components: 1
 
       - name: SSH - rebuild and restart containers
@@ -120,7 +120,7 @@ jobs:
           port: ${{ vars.SERVER_PORT || 22 }}
           script: |
             set -e
-            cd ~/tinder-habr
+            cd ~/HabrSwipe
             docker compose up -d --build
             docker system prune -f
 

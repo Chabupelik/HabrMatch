@@ -1,5 +1,6 @@
 import os
 from typing import Any
+
 from taskiq_aio_pika import AioPikaBroker
 from taskiq_redis import RedisAsyncResultBackend
 

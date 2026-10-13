@@ -11,7 +11,4 @@ result_backend: RedisAsyncResultBackend[Any] = RedisAsyncResultBackend(
     redis_url=REDIS_URL
 )
 
-broker = AioPikaBroker(
-    url=RABBITMQ_URL,
-    result_backend=result_backend,
-)
+broker = AioPikaBroker(url=RABBITMQ_URL).with_result_backend(result_backend)

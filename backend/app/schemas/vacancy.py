@@ -54,7 +54,7 @@ class VacancyBase(BaseModel):
 
 class VacancyCreate(VacancyBase):
     description_text: str | None = Field(
-        None, description="Полное текстовое описание вакансии"
+        default=None, description="Полное текстовое описание вакансии"
     )
     raw_payload: dict[str, Any] = Field(
         default_factory=dict,

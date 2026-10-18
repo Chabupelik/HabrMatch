@@ -1,12 +1,10 @@
 from datetime import datetime
-from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.enums import SwipeAction
 
-class SwipeAction(StrEnum):
-    LIKE = "like"
-    SKIP = "skip"
+__all__ = ["SwipeAction", "SwipeCreate", "SwipeResponse"]
 
 
 class SwipeCreate(BaseModel):
@@ -14,7 +12,8 @@ class SwipeCreate(BaseModel):
         ..., description="ID вакансии из нашей БД, которую свайпнули"
     )
     action: SwipeAction = Field(
-        ..., description="Тип действия: 'like' (откликнуться) или 'skip' (пропустить)"
+        ...,
+        description="Тип действия: 'like' (откликнуться) или 'dislike' (пропустить)",
     )
     cover_letter: str | None = Field(
         default=None,

@@ -1,4 +1,4 @@
-from pydantic import computed_field
+from pydantic import computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -39,7 +39,20 @@ class Settings(BaseSettings):
 
     # Безопасность и Telegram
     BOT_TOKEN: str = ""
-    INTERNAL_API_KEY: str = "super_secret_internal_key"
+
+    # Обязательно задать через переменную окружения — без дефолта
+    INTERNAL_API_KEY: str
+
+    @field_validator("INTERNAL_API_KEY")
+    @classmethod
+    def validate_internal_api_key(cls, v: str) -> str:
+        insecure = {"super_secret_internal_key", "changeme", "secret", ""}
+        if v in insecure:
+            raise ValueError(
+                "INTERNAL_API_KEY не задан или использует небезопасное значение. "
+                "Установите уникальный секрет через переменную окружения."
+            )
+        return v
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -69,4 +82,4 @@ class Settings(BaseSettings):
         )
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]

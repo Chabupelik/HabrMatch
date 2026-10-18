@@ -1,21 +1,10 @@
-import enum
-
 from sqlalchemy import Enum, ForeignKey, Integer, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
+from app.enums import ApplyStatus, SwipeAction
 
-
-class SwipeAction(enum.StrEnum):
-    LIKE = "like"
-    DISLIKE = "dislike"
-
-
-class ApplyStatus(enum.StrEnum):
-    PENDING = "pending"
-    SENT = "sent"
-    FAILED = "failed"
-    SKIPPED = "skipped"
+__all__ = ["Swipe", "SwipeAction", "ApplyStatus"]
 
 
 class Swipe(Base, TimestampMixin):

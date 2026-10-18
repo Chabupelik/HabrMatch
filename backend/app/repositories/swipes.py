@@ -1,9 +1,8 @@
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.swipe import ApplyStatus, Swipe
-from app.models.swipe import SwipeAction as ModelSwipeAction
-from app.schemas.apply import SwipeAction as SchemaSwipeAction
+from app.enums import ApplyStatus, SwipeAction
+from app.models.swipe import Swipe
 
 
 class SwipeRepository:
@@ -14,23 +13,21 @@ class SwipeRepository:
         self,
         user_id: int,
         vacancy_id: int,
-        action: SchemaSwipeAction | ModelSwipeAction,
+        action: SwipeAction,
         cover_letter: str | None = None,
     ) -> Swipe:
-        is_like = action == SchemaSwipeAction.LIKE or action == ModelSwipeAction.LIKE
-        db_action = ModelSwipeAction.LIKE if is_like else ModelSwipeAction.DISLIKE
+        is_like = action == SwipeAction.LIKE
         apply_status = ApplyStatus.PENDING if is_like else ApplyStatus.SKIPPED
 
         swipe = Swipe(
             user_id=user_id,
             vacancy_id=vacancy_id,
-            action=db_action,
+            action=action,
             apply_status=apply_status,
             cover_letter=cover_letter,
         )
         self.session.add(swipe)
-        await self.session.commit()
-        await self.session.refresh(swipe)
+        # Commit/flush делается на уровне сервиса (Unit of Work).
         return swipe
 
     async def update_apply_status(
@@ -48,7 +45,7 @@ class SwipeRepository:
             )
         )
         await self.session.execute(stmt)
-        await self.session.commit()
+        # Commit/flush делается на уровне сервиса (Unit of Work).
 
     async def get_by_user_and_vacancy(
         self, user_id: int, vacancy_id: int

@@ -1,12 +1,15 @@
 import hashlib
 import hmac
 import json
+import logging
 from typing import Any
 from urllib.parse import parse_qsl
 
 from fastapi import Header, HTTPException, status
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def validate_tg_init_data(init_data: str, bot_token: str) -> dict[str, Any]:
@@ -60,7 +63,14 @@ async def get_current_tg_user(
     authorization: str | None = Header(default=None),
     x_debug_user_id: int | None = Header(default=None),
 ) -> dict[str, Any]:
+    # ⚠️ DEBUG bypass — только для локальной разработки!
+    # Любой, зная заголовок X-Debug-User-Id, получит доступ к любому аккаунту.
+    # Убедись, что DEBUG=False на проде. main.py логирует предупреждение при старте.
     if settings.DEBUG and x_debug_user_id is not None:
+        logger.debug(
+            f"DEBUG auth bypass: X-Debug-User-Id={x_debug_user_id}. "
+            "Никогда не использовать в продакшене!"
+        )
         return {"id": x_debug_user_id, "username": "debug_user"}
 
     if not authorization:

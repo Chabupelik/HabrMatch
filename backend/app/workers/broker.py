@@ -1,14 +1,12 @@
-import os
 from typing import Any
 
 from taskiq_aio_pika import AioPikaBroker
 from taskiq_redis import RedisAsyncResultBackend
 
-RABBITMQ_URL: str = os.getenv("RABBITMQ_URL") or "amqp://guest:guest@rabbitmq:5672/"
-REDIS_URL: str = os.getenv("REDIS_URL") or "redis://redis:6379/0"
+from app.core.config import settings
 
 result_backend: RedisAsyncResultBackend[Any] = RedisAsyncResultBackend(
-    redis_url=REDIS_URL
+    redis_url=settings.redis_uri
 )
 
-broker = AioPikaBroker(url=RABBITMQ_URL).with_result_backend(result_backend)
+broker = AioPikaBroker(url=settings.rabbitmq_uri).with_result_backend(result_backend)

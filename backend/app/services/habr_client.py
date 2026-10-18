@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Self
 
 import httpx
 
@@ -6,11 +6,22 @@ from app.schemas.vacancy import VacancyCreate
 
 
 class HabrClient:
+    """
+    HTTP-клиент для Habr Career API.
+
+    Используй как async context manager, чтобы переиспользовать
+    TCP-соединение (keep-alive) между несколькими запросами:
+
+        async with HabrClient() as client:
+            page1 = await client.fetch_vacancies_page(1)
+            page2 = await client.fetch_vacancies_page(2)
+    """
+
     BASE_URL = "https://career.habr.com"
     API_URL = "https://career.habr.com/api/frontend/vacancies"
 
     def __init__(self, cookies: dict[str, str] | None = None):
-        self.headers = {
+        self._headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) "
                 "Gecko/20100101 Firefox/148.0"
@@ -21,7 +32,22 @@ class HabrClient:
             "Connection": "keep-alive",
             "Cache-Control": "no-cache",
         }
-        self.cookies = cookies or {}
+        self._cookies = cookies or {}
+        self._client: httpx.AsyncClient | None = None
+
+    async def __aenter__(self) -> Self:
+        self._client = httpx.AsyncClient(
+            headers=self._headers,
+            cookies=self._cookies,
+            timeout=15.0,
+            follow_redirects=True,
+        )
+        return self
+
+    async def __aexit__(self, *_: object) -> None:
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     def transform_raw_to_schema(self, item: dict[str, Any]) -> VacancyCreate:
         company = item.get("company") or {}
@@ -98,21 +124,28 @@ class HabrClient:
         page: int = 1,
         v_type: str = "suitable",
     ) -> list[VacancyCreate]:
+        if self._client is None:
+            raise RuntimeError(
+                "HabrClient должен использоваться как async context manager: "
+                "`async with HabrClient() as client:`"
+            )
+
         params = {
             "type": v_type,
             "page": str(page),
         }
 
-        async with httpx.AsyncClient(
-            headers=self.headers,
-            cookies=self.cookies,
-            timeout=15.0,
-            follow_redirects=True,
-        ) as client:
-            response = await client.get(self.API_URL, params=params)
+        try:
+            response = await self._client.get(self.API_URL, params=params)
             response.raise_for_status()
-            data = response.json()
+        except httpx.HTTPStatusError as exc:
+            raise httpx.HTTPStatusError(
+                f"Хабр вернул {exc.response.status_code} на странице {page}",
+                request=exc.request,
+                response=exc.response,
+            ) from exc
 
+        data = response.json()
         raw_list = (
             data.get("list") or data.get("vacancies")
             if isinstance(data, dict)

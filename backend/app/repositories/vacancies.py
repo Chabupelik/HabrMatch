@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from functools import cache
 
 from sqlalchemy import and_, desc, inspect, not_, select
 from sqlalchemy.dialects.postgresql import insert
@@ -10,6 +11,16 @@ from app.models.vacancy import Vacancy
 from app.schemas.vacancy import VacancyCreate, VacancyFilter
 
 
+@cache
+def _vacancy_columns() -> frozenset[str]:
+    """
+    Кешируем список колонок модели Vacancy — inspect() дорогостоящий,
+    а схема статична на протяжении жизни процесса.
+    """
+    mapper = inspect(Vacancy)
+    return frozenset(col.key for col in mapper.column_attrs)
+
+
 class VacancyRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -18,8 +29,7 @@ class VacancyRepository:
         if not vacancies:
             return 0
 
-        mapper = inspect(Vacancy)
-        valid_columns = {col.key for col in mapper.column_attrs}
+        valid_columns = _vacancy_columns()
 
         values = []
         for v in vacancies:
@@ -43,7 +53,7 @@ class VacancyRepository:
         )
 
         result = await self.session.execute(upsert_stmt)
-        await self.session.commit()
+        # Commit/flush делается на уровне сервиса (Unit of Work).
         rowcount = getattr(result, "rowcount", None)
         return (
             rowcount if isinstance(rowcount, int) and rowcount > 0 else len(vacancies)
@@ -52,11 +62,16 @@ class VacancyRepository:
     async def get_unseen_for_user(
         self, user_id: int, filters: VacancyFilter
     ) -> Sequence[Vacancy]:
-        swiped_subquery = (
-            select(Swipe.vacancy_id).where(Swipe.user_id == user_id).scalar_subquery()
+        # NOT EXISTS вместо NOT IN: устойчив к NULL-значениям и эффективнее
+        # при большом количестве свайпов благодаря составному индексу (user_id, vacancy_id).
+        swiped_exists = (
+            select(Swipe.id)
+            .where(Swipe.user_id == user_id, Swipe.vacancy_id == Vacancy.id)
+            .correlate(Vacancy)
+            .exists()
         )
 
-        conditions: list[ColumnElement[bool]] = [not_(Vacancy.id.in_(swiped_subquery))]
+        conditions: list[ColumnElement[bool]] = [not_(swiped_exists)]
 
         if filters.is_accredited_only:
             conditions.append(Vacancy.is_accredited.is_(True))

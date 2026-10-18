@@ -122,6 +122,7 @@ jobs:
             set -e
             cd ~/HabrSwipe
             docker compose up -d --build
+            docker compose exec -T backend alembic upgrade head
             docker image prune -f
 
   notify:

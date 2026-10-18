@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_secret_password}
       POSTGRES_DB: ${POSTGRES_DB:-habr_swipe}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -42,14 +42,16 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    ports:
+      - "127.0.0.1:5672:5672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - common_net
 
@@ -61,6 +63,11 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+      - POSTGRES_PORT=5432
+      - RABBITMQ_HOST=rabbitmq
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
@@ -81,6 +88,11 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+      - POSTGRES_PORT=5432
+      - RABBITMQ_HOST=rabbitmq
     command: taskiq worker app.workers.broker:broker app.workers.tasks
     depends_on:
       postgres:
@@ -100,6 +112,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - REDIS_HOST=redis
     depends_on:
       backend:
         condition: service_started

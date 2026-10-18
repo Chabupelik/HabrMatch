@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from sqlalchemy import and_, desc, not_, select
+from sqlalchemy import and_, desc, inspect, not_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
@@ -18,7 +18,17 @@ class VacancyRepository:
         if not vacancies:
             return 0
 
-        values = [v.model_dump(exclude_unset=True) for v in vacancies]
+        mapper = inspect(Vacancy)
+        valid_columns = {col.key for col in mapper.column_attrs}
+
+        values = []
+        for v in vacancies:
+            data = v.model_dump(exclude_unset=True)
+            filtered = {k: val for k, val in data.items() if k in valid_columns}
+            values.append(filtered)
+
+        if not values:
+            return 0
 
         stmt = insert(Vacancy).values(values)
 
@@ -34,19 +44,19 @@ class VacancyRepository:
 
         result = await self.session.execute(upsert_stmt)
         await self.session.commit()
-        rowcount = getattr(result, "rowcount", 0)
-        return int(rowcount) if rowcount and rowcount > 0 else len(vacancies)
+        rowcount = getattr(result, "rowcount", None)
+        return (
+            rowcount if isinstance(rowcount, int) and rowcount > 0 else len(vacancies)
+        )
 
     async def get_unseen_for_user(
         self, user_id: int, filters: VacancyFilter
     ) -> Sequence[Vacancy]:
-        swiped_vacancies_subquery = (
+        swiped_subquery = (
             select(Swipe.vacancy_id).where(Swipe.user_id == user_id).scalar_subquery()
         )
 
-        conditions: list[ColumnElement[bool]] = [
-            not_(Vacancy.id.in_(swiped_vacancies_subquery))
-        ]
+        conditions: list[ColumnElement[bool]] = [not_(Vacancy.id.in_(swiped_subquery))]
 
         if filters.is_accredited_only:
             conditions.append(Vacancy.is_accredited.is_(True))
@@ -72,7 +82,7 @@ class VacancyRepository:
         query = (
             select(Vacancy)
             .where(and_(*conditions))
-            .order_by(desc(Vacancy.created_at), desc(Vacancy.id))
+            .order_by(desc(Vacancy.id))
             .limit(filters.limit)
         )
 

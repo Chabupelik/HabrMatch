@@ -15,90 +15,56 @@ class QualificationLevel(StrEnum):
 
 
 class VacancyBase(BaseModel):
-    habr_id: int = Field(..., description="Уникальный ID вакансии на Хабр Карьере")
-    title: str = Field(..., max_length=255, description="Название вакансии")
-    company_title: str = Field(..., max_length=255, description="Название компании")
-    company_href: str | None = Field(
-        None, description="Относительный или полный URL компании"
-    )
+    habr_id: int
+    title: str
+    url: str
+    qualification: str | None = None
+    employment: str | None = None
+    remote_work: bool = False
+    is_marked: bool = False
+    published_date_raw: str | None = None
 
-    is_accredited: bool = Field(
-        default=False, description="Аккредитованная IT-компания"
-    )
-    remote_work: bool = Field(default=False, description="Доступна ли удаленная работа")
-    relocation: bool = Field(default=False, description="Помощь с релокацией")
+    company_id: int | None = None
+    company_title: str
+    company_alias: str | None = None
+    company_url: str | None = None
+    company_logo: str | None = None
+    is_accredited: bool = False
+    company_rating: str | None = None
 
-    salary_min: int | None = Field(None, ge=0, description="Минимальная зарплата")
-    salary_max: int | None = Field(None, ge=0, description="Максимальная зарплата")
-    salary_currency: str | None = Field(
-        None, max_length=10, description="Валюта (RUR, USD и т.д.)"
-    )
-    effective_max_salary: int | None = Field(
-        None,
-        ge=0,
-        description="Эффективный потолок зарплаты для сортировки и фильтрации",
-    )
+    salary_from: int | None = None
+    salary_to: int | None = None
+    salary_currency: str | None = None
+    salary_formatted: str | None = None
 
-    qualification: str | None = Field(None, description="Грейд (junior, middle, etc.)")
-    skills: list[str] = Field(
-        default_factory=list, description="Список тегов стека/навыков"
-    )
-    locations: list[str] = Field(default_factory=list, description="Города / локации")
+    predicted_salary_from: int | None = None
+    predicted_salary_to: int | None = None
+    effective_max_salary: int | None = None
 
-    url: str = Field(..., description="Прямая ссылка на вакансию на Хабре")
-    cover_letter_required: bool = Field(
-        default=False, description="Требуется ли обязательное сопроводительное письмо"
-    )
-    published_at: datetime | None = Field(None, description="Дата публикации вакансии")
+    skills: list[str] = Field(default_factory=list)
+    locations: list[str] = Field(default_factory=list)
+    divisions: list[str] = Field(default_factory=list)
+
+    can_quick_response: bool = False
+    quick_response_href: str | None = None
 
 
 class VacancyCreate(VacancyBase):
-    description_text: str | None = Field(
-        default=None, description="Полное текстовое описание вакансии"
-    )
-    raw_payload: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Сырой JSON с Хабра на случай изменения структуры",
-    )
+    raw_data: dict[str, Any] | None = None
 
 
 class VacancyRead(VacancyBase):
-    id: int = Field(..., description="Внутренний primary key вакансии в нашей БД")
+    id: int
     created_at: datetime
-
-    description_preview: str | None = Field(
-        None, description="Краткая выжимка описания вакансии"
-    )
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class VacancyFilter(BaseModel):
-    qualification: QualificationLevel | None = Field(
-        default=None,
-        description="Фильтр по грейду (junior, middle, etc.)",
-    )
-    is_accredited_only: bool = Field(
-        default=False,
-        description="Показывать только аккредитованные IT-компании",
-    )
-    remote_only: bool = Field(
-        default=False,
-        description="Только удаленная работа",
-    )
-    min_salary: int | None = Field(
-        default=None,
-        ge=0,
-        description="Минимальный порог зарплаты",
-    )
-    primary_skill: str | None = Field(
-        default=None,
-        description="Обязательный основной навык (100% должен присутствовать, например 'python')",
-    )
-    required_skills: list[str] = Field(
-        default_factory=list,
-        description="Сопутствующие технологии/фреймворки (хотя бы один из списка)",
-    )
-    limit: int = Field(
-        default=20, ge=1, le=100, description="Количество карточек в батче"
-    )
+    qualification: QualificationLevel | None = None
+    is_accredited_only: bool = False
+    remote_only: bool = False
+    min_salary: int | None = Field(default=None, ge=0)
+    primary_skill: str | None = None
+    required_skills: list[str] = Field(default_factory=list)
+    limit: int = Field(default=20, ge=1, le=100)

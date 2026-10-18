@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Any
 
 import httpx
@@ -24,18 +23,12 @@ class HabrClient:
         }
         self.cookies = cookies or {}
 
-    @staticmethod
-    def _parse_published_at(date_val: str | None) -> datetime | None:
-        if not date_val:
-            return None
-        try:
-            return datetime.fromisoformat(date_val.replace("Z", "+00:00"))
-        except (ValueError, TypeError):
-            return None
-
     def transform_raw_to_schema(self, item: dict[str, Any]) -> VacancyCreate:
         company = item.get("company") or {}
+        rating = company.get("rating") or {}
+        logo = company.get("logo") or {}
         pub_date = item.get("publishedDate") or {}
+
         salary = item.get("salary") or {}
         pred_salary = item.get("predictedSalary") or {}
 
@@ -47,6 +40,7 @@ class HabrClient:
 
         skills_raw = item.get("skills") or []
         locations_raw = item.get("locations") or []
+        divisions_raw = item.get("divisions") or []
 
         skills = [
             str(s["title"]).strip().lower()
@@ -58,37 +52,45 @@ class HabrClient:
             for loc in locations_raw
             if isinstance(loc, dict) and loc.get("title")
         ]
+        divisions = [
+            str(d["title"]).strip()
+            for d in divisions_raw
+            if isinstance(d, dict) and d.get("title")
+        ]
 
-        raw_pub_date = pub_date.get("date")
-        published_at = self._parse_published_at(raw_pub_date)
-
-        quick_resp = bool(item.get("quickResponseHref"))
-        cover_letter_required = bool(item.get("coverLetterRequired", not quick_resp))
-
-        qualification = item.get("qualification") or (
-            item.get("salaryQualification") or {}
-        ).get("title")
+        quick_resp = item.get("quickResponseHref")
+        company_href = company.get("href")
 
         return VacancyCreate(
             habr_id=item["id"],
             title=item.get("title", "Без названия"),
-            company_title=company.get("title", "Не указана"),
-            company_href=company.get("href"),
-            is_accredited=bool(company.get("accredited", False)),
+            url=f"{self.BASE_URL}{item.get('href', '')}",
+            qualification=item.get("qualification")
+            or (item.get("salaryQualification") or {}).get("title"),
+            employment=item.get("employment"),
             remote_work=bool(item.get("remoteWork", False)),
-            relocation=bool(item.get("relocation", False)),
-            salary_min=s_from,
-            salary_max=s_to,
+            is_marked=bool(item.get("isMarked", False)),
+            published_date_raw=pub_date.get("date") or pub_date.get("title"),
+            company_id=company.get("id"),
+            company_title=company.get("title", "Не указана"),
+            company_alias=company.get("alias_name"),
+            company_url=f"{self.BASE_URL}{company_href}" if company_href else None,
+            company_logo=logo.get("src"),
+            is_accredited=bool(company.get("accredited", False)),
+            company_rating=rating.get("value"),
+            salary_from=s_from,
+            salary_to=s_to,
             salary_currency=salary.get("currency"),
+            salary_formatted=salary.get("formatted"),
+            predicted_salary_from=p_from,
+            predicted_salary_to=p_to,
             effective_max_salary=eff_max,
-            qualification=str(qualification).lower() if qualification else None,
             skills=skills,
             locations=locations,
-            url=f"{self.BASE_URL}{item.get('href', '')}",
-            cover_letter_required=cover_letter_required,
-            published_at=published_at,
-            description_text=item.get("description"),
-            raw_payload=item,
+            divisions=divisions,
+            can_quick_response=bool(quick_resp),
+            quick_response_href=quick_resp,
+            raw_data=item,
         )
 
     async def fetch_vacancies_page(

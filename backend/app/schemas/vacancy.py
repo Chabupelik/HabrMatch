@@ -75,17 +75,29 @@ class VacancyRead(VacancyBase):
 
 class VacancyFilter(BaseModel):
     qualification: QualificationLevel | None = Field(
-        default=None, description="Фильтр по грейду (junior, middle, etc.)"
+        default=None,
+        description="Фильтр по грейду (junior, middle, etc.)",
     )
     is_accredited_only: bool = Field(
-        default=False, description="Показывать только аккредитованные IT-компании"
+        default=False,
+        description="Показывать только аккредитованные IT-компании",
     )
-    remote_only: bool = Field(default=False, description="Только удаленная работа")
+    remote_only: bool = Field(
+        default=False,
+        description="Только удаленная работа",
+    )
     min_salary: int | None = Field(
-        default=None, ge=0, description="Минимальный порог зарплаты"
+        default=None,
+        ge=0,
+        description="Минимальный порог зарплаты",
+    )
+    primary_skill: str | None = Field(
+        default=None,
+        description="Обязательный основной навык (100% должен присутствовать, например 'python')",
     )
     required_skills: list[str] = Field(
-        default_factory=list, description="Обязательные теги стека"
+        default_factory=list,
+        description="Сопутствующие технологии/фреймворки (хотя бы один из списка)",
     )
     limit: int = Field(
         default=20, ge=1, le=100, description="Количество карточек в батче"

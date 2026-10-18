@@ -4,7 +4,7 @@ from redis.asyncio import ConnectionPool, Redis
 
 from app.core.config import settings
 
-redis_pool = ConnectionPool.from_url(
+redis_pool: ConnectionPool = ConnectionPool.from_url(
     settings.redis_uri,
     decode_responses=True,
 )
@@ -19,4 +19,4 @@ async def get_redis() -> AsyncGenerator[Redis, None]:
     try:
         yield client
     finally:
-        await client.aclose()
+        await client.close()

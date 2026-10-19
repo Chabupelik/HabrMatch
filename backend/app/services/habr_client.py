@@ -2,25 +2,17 @@ from typing import Any, Self
 
 import httpx
 
+from app.core.config import settings
 from app.schemas.vacancy import VacancyCreate
 
 
 class HabrClient:
-    """
-    HTTP-клиент для Habr Career API.
-
-    Используй как async context manager, чтобы переиспользовать
-    TCP-соединение (keep-alive) между несколькими запросами:
-
-        async with HabrClient() as client:
-            page1 = await client.fetch_vacancies_page(1)
-            page2 = await client.fetch_vacancies_page(2)
-    """
-
     BASE_URL = "https://career.habr.com"
     API_URL = "https://career.habr.com/api/frontend/vacancies"
 
-    def __init__(self, cookies: dict[str, str] | None = None):
+    def __init__(self, cookie_str: str | None = None):
+        raw_cookie = cookie_str or settings.HABR_SESSION_COOKIE
+
         self._headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) "
@@ -32,13 +24,15 @@ class HabrClient:
             "Connection": "keep-alive",
             "Cache-Control": "no-cache",
         }
-        self._cookies = cookies or {}
+
+        if raw_cookie:
+            self._headers["Cookie"] = raw_cookie.strip()
+
         self._client: httpx.AsyncClient | None = None
 
     async def __aenter__(self) -> Self:
         self._client = httpx.AsyncClient(
             headers=self._headers,
-            cookies=self._cookies,
             timeout=15.0,
             follow_redirects=True,
         )

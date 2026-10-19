@@ -27,7 +27,6 @@ class SwipeRepository:
             cover_letter=cover_letter,
         )
         self.session.add(swipe)
-        # Commit/flush делается на уровне сервиса (Unit of Work).
         return swipe
 
     async def update_apply_status(
@@ -45,7 +44,6 @@ class SwipeRepository:
             )
         )
         await self.session.execute(stmt)
-        # Commit/flush делается на уровне сервиса (Unit of Work).
 
     async def get_by_user_and_vacancy(
         self, user_id: int, vacancy_id: int

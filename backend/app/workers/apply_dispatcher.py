@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import random
 
 import httpx
 
@@ -16,7 +18,6 @@ async def dispatch_habr_apply(
     swipe_id: int,
     custom_cover_letter: str | None = None,
 ) -> bool:
-    # --- Фаза 1: чтение из БД (короткая сессия) ---
     async with async_session_maker() as session:
         user_repo = UserRepository(session)
         vacancy_repo = VacancyRepository(session)
@@ -43,18 +44,15 @@ async def dispatch_habr_apply(
             await session.commit()
             return False
 
-        # Копируем нужные данные, чтобы закрыть сессию до HTTP-запроса
         cookie = user.habr_cookie
         cover_letter = custom_cover_letter or user.default_cover_letter or ""
         habr_vacancy_id = vacancy.habr_id
         vacancy_url = vacancy.url
         apply_url = vacancy.quick_response_href or "/api/frontend/quick_responses"
 
-    # Сессия закрыта — формируем URL вне её
     if not apply_url.startswith("http"):
         apply_url = f"https://career.habr.com{apply_url}"
 
-    # --- Фаза 2: HTTP-запрос к Хабру (без сессии БД) ---
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:148.0) "
@@ -70,6 +68,12 @@ async def dispatch_habr_apply(
         "vacancy_id": habr_vacancy_id,
         "message": cover_letter,
     }
+
+    delay = random.uniform(25.0, 35.0)
+    logger.info(
+        f"Ожидание {delay:.1f} сек перед откликом на вакансию {habr_vacancy_id} (swipe_id: {swipe_id})..."
+    )
+    await asyncio.sleep(delay)
 
     is_success = False
     error_msg: str | None = None
@@ -99,7 +103,6 @@ async def dispatch_habr_apply(
         error_msg = f"Сетевая ошибка при отклике: {exc}"
         logger.error(error_msg, exc_info=True)
 
-    # --- Фаза 3: запись результата в БД (отдельная короткая сессия) ---
     async with async_session_maker() as session:
         swipe_repo = SwipeRepository(session)
         await swipe_repo.update_apply_status(

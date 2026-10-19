@@ -1,3 +1,5 @@
+import json
+
 from pydantic import computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -9,11 +11,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Приложение
     PROJECT_NAME: str = "HabrSwipe API"
     DEBUG: bool = False
 
-    # PostgreSQL
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres_secret_password"
     POSTGRES_HOST: str = "postgres"
@@ -21,26 +21,41 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "habr_swipe"
     DATABASE_URL: str | None = None
 
-    # Redis
     REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
     REDIS_URL: str | None = None
 
-    # RabbitMQ
     RABBITMQ_USER: str = "guest"
     RABBITMQ_PASS: str = "guest"
     RABBITMQ_HOST: str = "rabbitmq"
     RABBITMQ_PORT: int = 5672
     RABBITMQ_URL: str | None = None
 
-    # Настройки Habr Career (куки для откликов и персональной выдачи)
     HABR_SESSION_COOKIE: str = ""
 
-    # Безопасность и Telegram
+    CORS_ORIGINS: list[str] = [
+        "https://work.chabupelik.su",
+        "https://t.me",
+        "https://web.telegram.org",
+    ]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: object) -> list[str]:
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("["):
+                return json.loads(v)
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        raise ValueError(
+            f"CORS_ORIGINS должен быть списком или строкой, получен: {type(v)}"
+        )
+
     BOT_TOKEN: str = ""
 
-    # Обязательно задать через переменную окружения — без дефолта
     INTERNAL_API_KEY: str
 
     @field_validator("INTERNAL_API_KEY")

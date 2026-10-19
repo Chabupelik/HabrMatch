@@ -3,8 +3,8 @@ import logging
 import httpx
 
 from app.db.session import async_session_maker
-from app.repositories.vacancies import VacancyRepository
 from app.services.habr_client import HabrClient
+from app.services.vacancy import VacancyService
 
 logger = logging.getLogger(__name__)
 
@@ -23,18 +23,14 @@ async def poll_habr_vacancies(pages: int = 3) -> int:
             try:
                 logger.info(f"Парсинг Хабр Карьеры: страница {page}/{pages}")
 
-                # 1. HTTP-запрос — без активной сессии БД
                 vacancies = await client.fetch_vacancies_page(page=page)
 
                 if not vacancies:
                     logger.info("Получен пустой список вакансий, завершение.")
                     break
 
-                # 2. Короткая сессия только для записи в БД
                 async with async_session_maker() as session:
-                    repo = VacancyRepository(session)
-                    count = await repo.upsert_many(vacancies)
-                    await session.commit()
+                    count = await VacancyService(session).sync_page(vacancies)
 
                 total_saved += count
                 logger.info(f"Страница {page}: успешно обработано {count} вакансий.")

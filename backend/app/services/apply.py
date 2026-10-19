@@ -31,7 +31,6 @@ class ApplyService:
             cover_letter=swipe_data.cover_letter,
         )
 
-        # Commit здесь — Unit of Work: репозиторий только накапливает, сервис коммитит.
         await self.session.commit()
         await self.session.refresh(swipe)
 
@@ -47,7 +46,6 @@ class ApplyService:
                     f"Задача на отклик отправлена в очередь для swipe_id={swipe.id}"
                 )
             except (ConnectionError, TimeoutError, OSError) as e:
-                # Ловим только транспортные ошибки брокера; системные исключения пробрасываем.
                 logger.error(
                     f"Не удалось отправить задачу отклика в Taskiq: {e}", exc_info=True
                 )

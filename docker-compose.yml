@@ -93,10 +93,32 @@ services:
       - REDIS_HOST=redis
       - POSTGRES_PORT=5432
       - RABBITMQ_HOST=rabbitmq
-    command: taskiq worker app.workers.broker:broker app.workers.tasks
+    command: taskiq worker app.workers.broker:broker app.workers.tasks --max-async-tasks 1
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - common_net
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: habr_swipe_scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+      - POSTGRES_PORT=5432
+      - RABBITMQ_HOST=rabbitmq
+    command: taskiq scheduler app.workers.tasks:scheduler
+    depends_on:
       redis:
         condition: service_healthy
       rabbitmq:

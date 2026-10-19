@@ -37,11 +37,9 @@ class UserRepository:
             .returning(User)
         )
         result = await self.session.execute(stmt)
-        # Commit/flush делается на уровне сервиса (Unit of Work).
         user = result.scalar_one_or_none()
 
         if user is None:
-            # ON CONFLICT DO NOTHING сработал — запись уже есть, читаем её
             user = await self.get_by_telegram_id(telegram_id)
 
         return user  # type: ignore[return-value]
@@ -63,5 +61,4 @@ class UserRepository:
 
         stmt = update(User).where(User.id == user_id).values(**values).returning(User)
         result = await self.session.execute(stmt)
-        # Commit/flush делается на уровне сервиса (Unit of Work).
         return result.scalar_one_or_none()
